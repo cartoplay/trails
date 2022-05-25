@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Noreste Trails Proposal</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.8.0/dist/leaflet.css"
+    integrity="sha512-hoalWLoI8r4UszCkZ5kL8vayOGVae1oxXe/2A4AO6J9+580uKHDO3JdHb7NzwwzK5xr/Fs0W40kiNHxM9vyTtQ=="
+    crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.8.0/dist/leaflet.js"
+    integrity="sha512-BB3hKbKWOc9Ez/TAwyWxNXeoV9c1v6FIeYiBieIWkpLjauysF18NzgR1MBNBXf8/KABdlkX68nAhlwcDFLGPCQ=="
+    crossorigin=""></script>
+    <style>
+        #map { height: 600px; }
+.legend {
+    line-height: 18px;
+    color: #555;
+}
+.legend i {
+    width: 18px;
+    height: 18px;
+    float: left;
+    margin-right: 8px;
+    opacity: 0.7;
+}
+.info {
+    padding: 6px 8px;
+    font: 14px/16px Arial, Helvetica, sans-serif;
+    background: white;
+    background: rgba(255,255,255,0.8);
+    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+    border-radius: 5px;
+}
+.info h4 {
+    margin: 0 0 5px;
+    color: #777;
+}
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <script src="./geojson/rutas.js"></script>
+    <script>
+        var map = L.map('map').setView([18.342794291969103, -65.72914123535158], 12);
+        var OpenStreetMap_Mapnik = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+	maxZoom: 19,
+	attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+})
+var CartoDB_DarkMatter = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+	attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+	subdomains: 'abcd',
+	maxZoom: 20
+}).addTo(map);
+var Esri_WorldImagery = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+	attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+});
+// var geojson = L.geoJSON(rutas)
+// geojson.addTo(map);
+var losColores = ['#e41a1c','#377eb8','#4daf4a','#984ea3','#ff7f00','#ffff33']//['#edf8fb','#ccece6','#99d8c9','#66c2a4','#41ae76','#238b45','#005824']//['#ffffcc','#c7e9b4','#7fcdbb','#41b6c4','#1d91c0','#225ea8','#0c2c84']
+var lasFases = [1,2,3,4,5,6,7]
+
+var baseMaps = {
+    "Grayscale": CartoDB_DarkMatter,
+    "Satellite": Esri_WorldImagery,
+    "Open Street Map":OpenStreetMap_Mapnik
+};
+var layerControl = L.control.layers(baseMaps).addTo(map);
+
+var legend = L.control({position: 'bottomleft'});
+    legend.onAdd = function (map) {
+
+    var div = L.DomUtil.create('div', 'legend');
+    labels = ['<strong> Fases / Rutas </strong>'],
+    categories = ['Road Surface','Signage','Line Markings','Roadside Hazards','Other'];
+
+    for (var i = 0; i < losColores.length; i++) {
+
+            div.innerHTML += 
+            labels.push(
+                '<i class="legend" style="background:' +losColores[i] + '"></i> ' +
+            (lasFases[i] ? lasFases[i] : '+'));
+
+        }
+        div.innerHTML = labels.join('<br>');
+    return div;
+    };
+    legend.addTo(map);
+
+function highlightFeature(e) {
+    var layer = e.target;
+    info.update(layer.feature.properties);
+
+
+    layer.setStyle({
+        weight: 5,
+        color: '#666',
+        dashArray: '',
+        fillOpacity: 0.7
+    });
+
+    if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
+        layer.bringToFront();
+    }
+}
+function resetHighlight(e) {
+    geojson.resetStyle(e.target);
+    info.update();
+}
+function zoomToFeature(e) {
+    map.fitBounds(e.target.getBounds());
+}
+
+function onEachFeature(feature, layer) {
+    layer.on({
+        mouseover: highlightFeature,
+        mouseout: resetHighlight,
+        click: zoomToFeature
+    });
+}
+
+geojson = L.geoJson(rutas, {
+    style: function(feature) {
+        switch (feature.properties.stage) {
+            case 1: return {color: losColores[0]};
+            case 2:   return {color: losColores[1]};
+            case 3:   return {color: losColores[2]};
+            case 4:   return {color: losColores[3]};
+            case 5:   return {color: losColores[4]};
+            case 6:   return {color: losColores[5]};
+            case 7:   return {color: losColores[6]};
+        }
+    },
+    onEachFeature: onEachFeature
+}).addTo(map);
+
+var info = L.control();
+
+info.onAdd = function (map) {
+    this._div = L.DomUtil.create('div', 'info'); // create a div with a class "info"
+    this.update();
+    return this._div;
+};
+
+// method that we will use to update the control based on feature properties passed
+info.update = function (props) {
+    this._div.innerHTML = '<h4>Fases del sendero</h4>' +  (props ?
+        '<b> Fase: ' + props.stage + '</b><br />' + props.descrip + '<sup></sup>'
+        : 'selecciona una fase');
+};
+
+info.addTo(map);
+
+</script>
+
+</body>
+</html>
